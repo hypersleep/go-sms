@@ -94,8 +94,35 @@ func fetchConfig(continuousFetch bool) {
 				log.Println(err)
 			}
 
+			agent := client.Agent()
 
-			if duration == time.Duration(0) { break FetchLoop }
+			err = agent.PassTTL("service:go-sms1", "Internal TTL ping")
+			if err != nil {
+				log.Println(err)
+			}
+
+			if duration == time.Duration(0) {
+				if serverConfig.AppEnv != "development" {
+					check := &consul.AgentServiceCheck{
+						TTL: "30s",
+					}
+
+					service := &consul.AgentServiceRegistration{
+						ID: "go-sms1",
+						Name: "go-sms",
+						Tags: []string{"1", serverConfig.AppEnv},
+						Port: 8080,
+						Check: check,
+					}
+
+					err = agent.ServiceRegister(service)
+					if err != nil {
+						log.Println(err)
+					}
+				}
+
+				break FetchLoop
+			}
 		}
 }
 
